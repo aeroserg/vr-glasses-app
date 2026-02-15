@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { GLRenderer } from "./gl/renderer";
 import { defaultSettings, VRSettings } from "./types";
 
@@ -105,6 +105,16 @@ export default function App() {
   const [uiMode, setUiMode] = useState<UiMode>("settings");
   const [isRunning, setIsRunning] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [isLandscape, setIsLandscape] = useState(() => {
+    if (typeof window === "undefined") {
+      return true;
+    }
+    const mq = window.matchMedia?.("(orientation: landscape)");
+    if (mq && typeof mq.matches === "boolean") {
+      return mq.matches;
+    }
+    return window.innerWidth >= window.innerHeight;
+  });
 
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const videoRef = useRef<HTMLVideoElement>(null);
@@ -130,6 +140,41 @@ export default function App() {
   useEffect(() => {
     return () => {
       handleStop();
+    };
+  }, []);
+
+  useEffect(() => {
+    if (typeof window === "undefined") {
+      return;
+    }
+    const mq = window.matchMedia?.("(orientation: landscape)");
+    const update = () => {
+      if (mq && typeof mq.matches === "boolean") {
+        setIsLandscape(mq.matches);
+      } else {
+        setIsLandscape(window.innerWidth >= window.innerHeight);
+      }
+    };
+    update();
+    window.addEventListener("resize", update);
+    window.addEventListener("orientationchange", update);
+    if (mq) {
+      if (typeof mq.addEventListener === "function") {
+        mq.addEventListener("change", update);
+      } else if (typeof mq.addListener === "function") {
+        mq.addListener(update);
+      }
+    }
+    return () => {
+      window.removeEventListener("resize", update);
+      window.removeEventListener("orientationchange", update);
+      if (mq) {
+        if (typeof mq.removeEventListener === "function") {
+          mq.removeEventListener("change", update);
+        } else if (typeof mq.removeListener === "function") {
+          mq.removeListener(update);
+        }
+      }
     };
   }, []);
 
@@ -192,7 +237,7 @@ export default function App() {
     }
   };
 
-  const handleStop = () => {
+  const handleStop = useCallback(() => {
     rendererRef.current?.stop();
     if (videoRef.current) {
       videoRef.current.pause();
@@ -201,11 +246,35 @@ export default function App() {
     streamRef.current?.getTracks().forEach((track) => track.stop());
     streamRef.current = null;
     setIsRunning(false);
-  };
+  }, []);
 
   const applyPreset = (preset: VRSettings) => {
     setSettings(preset);
   };
+
+  useEffect(() => {
+    if (!isLandscape) {
+      handleStop();
+      rendererRef.current = null;
+    }
+  }, [handleStop, isLandscape]);
+
+  if (!isLandscape) {
+    return (
+      <div className="orientation-screen">
+        <div className="orientation-card">
+          <div className="orientation-icon" aria-hidden="true" />
+          <div className="orientation-title">Поверните устройство</div>
+          <div className="orientation-text">
+            Для корректной работы переведите телефон в альбомную ориентацию.
+          </div>
+          <div className="orientation-hint">
+            После поворота интерфейс появится автоматически.
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className={`app ${uiMode === "vr" ? "mode-vr" : "mode-settings"}`}>
@@ -257,8 +326,7 @@ export default function App() {
           <div className="overlay-message">
             <strong>Готово к запуску камеры</strong>
             <div className="notice">
-              Нажмите Старт для доступа к задней камере. На телефоне нужен HTTPS
-              или localhost. Настройки смещения, масштаба и дисторсии доступны в
+              Нажмите Старт для доступа к задней камере. Настройки смещения, масштаба и дисторсии доступны в
               панели.
             </div>
             {error && (

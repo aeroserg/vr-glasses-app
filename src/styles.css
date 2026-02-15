@@ -31,6 +31,67 @@ body {
   color: var(--text);
 }
 
+.orientation-screen {
+  position: fixed;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 24px;
+  text-align: center;
+  background:
+    radial-gradient(circle at 20% 10%, rgba(78, 242, 198, 0.18), transparent 55%),
+    radial-gradient(circle at 80% 15%, rgba(50, 201, 255, 0.18), transparent 50%),
+    linear-gradient(180deg, #0b0f1a 0%, #0a0c12 100%);
+  z-index: 9999;
+}
+
+.orientation-card {
+  max-width: 420px;
+  width: 100%;
+  padding: 28px;
+  border-radius: 24px;
+  background: var(--panel);
+  border: 1px solid var(--panel-border);
+  box-shadow: 0 30px 60px var(--shadow);
+  backdrop-filter: blur(16px);
+}
+
+.orientation-icon {
+  width: 120px;
+  height: 68px;
+  margin: 0 auto 18px;
+  border-radius: 18px;
+  border: 2px solid rgba(255, 255, 255, 0.5);
+  position: relative;
+}
+
+.orientation-icon::after {
+  content: "";
+  position: absolute;
+  inset: 10px;
+  border-radius: 12px;
+  border: 2px dashed rgba(255, 255, 255, 0.35);
+}
+
+.orientation-title {
+  font-size: 1.4rem;
+  font-weight: 700;
+  margin-bottom: 8px;
+}
+
+.orientation-text {
+  font-size: 1rem;
+  line-height: 1.4;
+  margin-bottom: 10px;
+}
+
+.orientation-hint {
+  color: var(--muted);
+  font-size: 0.9rem;
+  line-height: 1.4;
+}
+
 .app {
   min-height: 100%;
   display: flex;
