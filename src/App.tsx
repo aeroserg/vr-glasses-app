@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { GLRenderer } from "./gl/renderer";
 import { defaultSettings, VRSettings } from "./types";
+import { MdIosShare, MdShare } from "react-icons/md";
 
 const SETTINGS_KEY = "phone-vr-camera-settings";
 
@@ -42,6 +43,29 @@ const Slider = ({
     </label>
   );
 };
+
+export function useIsApplePlatform(): boolean {
+  return useMemo(() => {
+    if (typeof navigator === "undefined") return false;
+
+    const ua = navigator.userAgent ?? "";
+    const platform = (navigator.platform ?? "") as string;
+    const maxTouchPoints = (navigator as any).maxTouchPoints ?? 0;
+    const chPlatform = (navigator as any).userAgentData?.platform as string | undefined;
+
+    if (chPlatform) return chPlatform === "macOS" || chPlatform === "iOS" || chPlatform === "iPadOS";
+
+    if (/Windows NT/i.test(ua) || /^Win/i.test(platform)) return false;
+    if (/Android/i.test(ua)) return false;
+
+    if (/iPhone|iPad|iPod/i.test(ua)) return true;
+    if (platform === "MacIntel" && maxTouchPoints > 1) return true;
+    if (/^Mac/i.test(platform)) return true;
+    if (/Macintosh/i.test(ua) && !/Mobile/i.test(ua)) return true;
+
+    return false;
+  }, []);
+}
 
 const loadSettings = (): VRSettings => {
   if (typeof window === "undefined") {
@@ -128,6 +152,8 @@ export default function App() {
     }
     return Boolean(navigator.mediaDevices?.getUserMedia);
   }, []);
+
+  
 
   useEffect(() => {
     settingsRef.current = settings;
@@ -252,6 +278,8 @@ export default function App() {
     setSettings(preset);
   };
 
+  const isApplePlatform = useIsApplePlatform();
+
   useEffect(() => {
     if (!isLandscape) {
       handleStop();
@@ -262,7 +290,7 @@ export default function App() {
   if (!isLandscape) {
     return (
       <div className="orientation-screen">
-        <div className="orientation-card">
+        <div className="orientation-card ">
           <div className="orientation-icon" aria-hidden="true" />
           <div className="orientation-title">Поверните устройство</div>
           <div className="orientation-text">
@@ -272,6 +300,22 @@ export default function App() {
             После поворота интерфейс появится автоматически.
           </div>
         </div>
+
+         <div className="orientation-card">
+          {isApplePlatform ? (
+            <MdIosShare size={36} aria-hidden="true" />
+          ) : (
+            <MdShare size={36} aria-hidden="true" />
+          )}
+          <div className="orientation-title">Добавьте на главный экран</div>
+          <div className="orientation-text">
+            Для полноценного опыта использования добавьте ссылку на главный экран. Нажмите "поделиться", затем выберите "добавить на главный экран" или "добавить на экран домой".
+          </div>
+          <div className="orientation-hint">
+            После этого откройте приложение с рабочего стола. Оно запустится как полноценное приложение.
+          </div>
+        </div>
+
       </div>
     );
   }
