@@ -176,10 +176,11 @@ canvas {
 
 .panel {
   position: absolute;
-  left: 12px;
-  right: 12px;
+  left: 33vw;
   bottom: 12px;
   max-height: 56vh;
+  width: 33vw;
+
   overflow-y: auto;
   padding: 18px;
   border-radius: 20px;
@@ -332,6 +333,16 @@ button.toggle-active {
   font-size: 0.82rem;
   color: var(--muted);
   line-height: 1.4;
+}
+
+@media screen and (max-width: 997px) {
+  .panel {
+
+    left: 15vw;
+      padding-right: 5rem;
+
+    width: 70vw;
+  }
 }
 
 @media (max-width: 350px) {

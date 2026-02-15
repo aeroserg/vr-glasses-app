@@ -8,9 +8,14 @@ export type VRSettings = {
   contrast: number;
   brightness: number;
   gamma: number;
+  highlights: number;
+  shadows: number;
   distortionEnabled: boolean;
   k1: number;
   k2: number;
+  sphereStrength: number;
+  sphereDiameter: number;
+  filterMode: "none" | "amber" | "deepblue" | "edge";
   magnifierEnabled: boolean;
   magnifierZoom: number;
   calibration: boolean;
@@ -26,9 +31,14 @@ export const defaultSettings: VRSettings = {
   contrast: 1.0,
   brightness: 0.0,
   gamma: 1.0,
+  highlights: 0.0,
+  shadows: 0.0,
   distortionEnabled: true,
   k1: 35,
   k2: 20,
+  sphereStrength: 0,
+  sphereDiameter: 100,
+  filterMode: "none",
   magnifierEnabled: false,
   magnifierZoom: 1.6,
   calibration: false

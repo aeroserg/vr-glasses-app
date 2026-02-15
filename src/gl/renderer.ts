@@ -13,6 +13,8 @@ type UniformLocations = {
   contrast: WebGLUniformLocation | null;
   brightness: WebGLUniformLocation | null;
   gamma: WebGLUniformLocation | null;
+  highlights: WebGLUniformLocation | null;
+  shadows: WebGLUniformLocation | null;
   scale: WebGLUniformLocation | null;
   offset: WebGLUniformLocation | null;
   separation: WebGLUniformLocation | null;
@@ -20,6 +22,10 @@ type UniformLocations = {
   videoAspect: WebGLUniformLocation | null;
   magnifyEnabled: WebGLUniformLocation | null;
   magnifyZoom: WebGLUniformLocation | null;
+  sphereStrength: WebGLUniformLocation | null;
+  sphereRadius: WebGLUniformLocation | null;
+  filterMode: WebGLUniformLocation | null;
+  texel: WebGLUniformLocation | null;
   k1: WebGLUniformLocation | null;
   k2: WebGLUniformLocation | null;
   distortEnabled: WebGLUniformLocation | null;
@@ -89,6 +95,8 @@ export class GLRenderer {
       contrast: this.gl.getUniformLocation(this.program, "uContrast"),
       brightness: this.gl.getUniformLocation(this.program, "uBrightness"),
       gamma: this.gl.getUniformLocation(this.program, "uGamma"),
+      highlights: this.gl.getUniformLocation(this.program, "uHighlights"),
+      shadows: this.gl.getUniformLocation(this.program, "uShadows"),
       scale: this.gl.getUniformLocation(this.program, "uScale"),
       offset: this.gl.getUniformLocation(this.program, "uOffset"),
       separation: this.gl.getUniformLocation(this.program, "uSeparation"),
@@ -96,6 +104,10 @@ export class GLRenderer {
       videoAspect: this.gl.getUniformLocation(this.program, "uVideoAspect"),
       magnifyEnabled: this.gl.getUniformLocation(this.program, "uMagnifyEnabled"),
       magnifyZoom: this.gl.getUniformLocation(this.program, "uMagnifyZoom"),
+      sphereStrength: this.gl.getUniformLocation(this.program, "uSphereStrength"),
+      sphereRadius: this.gl.getUniformLocation(this.program, "uSphereRadius"),
+      filterMode: this.gl.getUniformLocation(this.program, "uFilterMode"),
+      texel: this.gl.getUniformLocation(this.program, "uTexel"),
       k1: this.gl.getUniformLocation(this.program, "uK1"),
       k2: this.gl.getUniformLocation(this.program, "uK2"),
       distortEnabled: this.gl.getUniformLocation(this.program, "uDistortEnabled"),
@@ -296,6 +308,8 @@ export class GLRenderer {
     this.setUniform1f(this.uniforms.contrast, settings.contrast);
     this.setUniform1f(this.uniforms.brightness, settings.brightness);
     this.setUniform1f(this.uniforms.gamma, settings.gamma);
+    this.setUniform1f(this.uniforms.highlights, settings.highlights);
+    this.setUniform1f(this.uniforms.shadows, settings.shadows);
     this.setUniform1f(this.uniforms.scale, settings.scale);
     this.setUniform2f(this.uniforms.offset, offsetX, offsetY);
     this.setUniform1f(this.uniforms.separation, settings.separation);
@@ -306,6 +320,18 @@ export class GLRenderer {
       settings.magnifierEnabled ? 1 : 0
     );
     this.setUniform1f(this.uniforms.magnifyZoom, settings.magnifierZoom);
+    this.setUniform1f(this.uniforms.sphereStrength, settings.sphereStrength / 100);
+    const sphereRadius = 0.5 * (settings.sphereDiameter / 100);
+    this.setUniform1f(this.uniforms.sphereRadius, sphereRadius);
+    const filterIndex =
+      settings.filterMode === "amber"
+        ? 1
+        : settings.filterMode === "deepblue"
+          ? 2
+          : settings.filterMode === "edge"
+            ? 3
+            : 0;
+    this.setUniform1f(this.uniforms.filterMode, filterIndex);
     const distortionScale = 0.1;
     this.setUniform1f(this.uniforms.k1, settings.k1 * distortionScale);
     this.setUniform1f(this.uniforms.k2, settings.k2 * distortionScale);
@@ -356,10 +382,10 @@ export class GLRenderer {
     const offsetY = Math.max(0, Math.floor((height - squareSize) / 2));
 
     const settings = this.getSettings();
-    const videoAspect =
-      this.video.videoWidth && this.video.videoHeight
-        ? this.video.videoWidth / this.video.videoHeight
-        : 1;
+    const videoWidth = this.video.videoWidth || 1;
+    const videoHeight = this.video.videoHeight || 1;
+    const videoAspect = videoWidth / videoHeight;
+    this.setUniform2f(this.uniforms.texel, 1 / videoWidth, 1 / videoHeight);
 
     this.drawEye(
       -1,

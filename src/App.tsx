@@ -96,7 +96,9 @@ const presets: Record<string, VRSettings> = {
     separation: 0.02,
     contrast: 1.05,
     k1: 25,
-    k2: 12
+    k2: 12,
+    sphereStrength: 25,
+    sphereDiameter: 90
   },
   "Сильный": {
     ...defaultSettings,
@@ -104,7 +106,9 @@ const presets: Record<string, VRSettings> = {
     separation: 0.03,
     contrast: 1.1,
     k1: 70,
-    k2: 45
+    k2: 45,
+    sphereStrength: 60,
+    sphereDiameter: 100
   }
 };
 
@@ -428,6 +432,40 @@ export default function App() {
             ))}
           </div>
 
+          <div className="section-title">Фильтры</div>
+          <div className="button-row">
+            <button
+              className={settings.filterMode === "none" ? "toggle-active" : "ghost"}
+              onClick={() => updateSettings({ filterMode: "none" })}
+            >
+              Без фильтра
+            </button>
+            <button
+              className={
+                settings.filterMode === "amber" ? "toggle-active" : "ghost"
+              }
+              onClick={() => updateSettings({ filterMode: "amber" })}
+            >
+              Желто-черный
+            </button>
+            <button
+              className={
+                settings.filterMode === "deepblue" ? "toggle-active" : "ghost"
+              }
+              onClick={() => updateSettings({ filterMode: "deepblue" })}
+            >
+              Темно-сине-белый
+            </button>
+            <button
+              className={
+                settings.filterMode === "edge" ? "toggle-active" : "ghost"
+              }
+              onClick={() => updateSettings({ filterMode: "edge" })}
+            >
+              Контурная резкость
+            </button>
+          </div>
+
           <div className="section-title">Изображение</div>
           <div className="controls">
             <Slider
@@ -447,12 +485,28 @@ export default function App() {
               onChange={(value) => updateSettings({ brightness: value })}
             />
             <Slider
-              label="Светлые участки"
+              label="Гамма"
               min={0.5}
               max={2.5}
               step={0.01}
               value={settings.gamma}
               onChange={(value) => updateSettings({ gamma: value })}
+            />
+            <Slider
+              label="Светлые участки"
+              min={-1}
+              max={1}
+              step={0.01}
+              value={settings.highlights}
+              onChange={(value) => updateSettings({ highlights: value })}
+            />
+            <Slider
+              label="Тени"
+              min={-1}
+              max={1}
+              step={0.01}
+              value={settings.shadows}
+              onChange={(value) => updateSettings({ shadows: value })}
             />
           </div>
 
@@ -526,6 +580,24 @@ export default function App() {
               step={1}
               value={settings.k2}
               onChange={(value) => updateSettings({ k2: value })}
+              formatValue={(value) => value.toFixed(0)}
+            />
+            <Slider
+              label="Сферизация (граница)"
+              min={0}
+              max={100}
+              step={1}
+              value={settings.sphereStrength}
+              onChange={(value) => updateSettings({ sphereStrength: value })}
+              formatValue={(value) => value.toFixed(0)}
+            />
+            <Slider
+              label="Диаметр сферы (0-100)"
+              min={0}
+              max={100}
+              step={1}
+              value={settings.sphereDiameter}
+              onChange={(value) => updateSettings({ sphereDiameter: value })}
               formatValue={(value) => value.toFixed(0)}
             />
           </div>
