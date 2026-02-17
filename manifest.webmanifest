@@ -1,7 +1,7 @@
 {
-  "name": "Phone VR Camera",
-  "short_name": "Phone VR",
-  "description": "Мобильная WebGL-камера для VR-очков: split-экран, калибровка и дисторсия линз.",
+  "name": "Мобильная VR Камера",
+  "short_name": "VR-камера",
+  "description": "Мобильная WebGL-камера для VR-очков: split-экран, калибровка, пресеты, настройки, фильтры, лупа, дисторсия",
   "start_url": ".",
   "scope": ".",
   "display": "standalone",
