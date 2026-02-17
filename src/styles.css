@@ -29,6 +29,7 @@ body,
 
 body {
   color: var(--text);
+  overflow: hidden;
 }
 
 .orientation-screen {
@@ -143,6 +144,7 @@ body {
   flex: 1;
   padding: env(safe-area-inset-top) env(safe-area-inset-right)
     env(safe-area-inset-bottom) env(safe-area-inset-left);
+  touch-action: pan-y;
 }
 
 .canvas-wrap {
@@ -176,11 +178,11 @@ canvas {
 
 .panel {
   position: absolute;
-  left: 33vw;
+  left: 12px;
+  right: 12px;
   bottom: 12px;
   max-height: 56vh;
-  width: 33vw;
-
+  width: auto;
   overflow-y: auto;
   padding: 18px;
   border-radius: 20px;
@@ -188,6 +190,7 @@ canvas {
   border: 1px solid var(--panel-border);
   box-shadow: 0 25px 60px var(--shadow);
   backdrop-filter: blur(16px);
+  z-index: 4;
 }
 
 .panel.hidden {
@@ -312,6 +315,162 @@ button.toggle-active {
   color: var(--text);
 }
 
+button.settings-button {
+  background: rgba(0, 0, 0, 0.55);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  color: #fff;
+}
+
+button.settings-button.toggle-active {
+  border-color: rgba(78, 242, 198, 0.7);
+  box-shadow: 0 0 0 2px rgba(78, 242, 198, 0.25);
+  background: rgba(0, 0, 0, 0.65);
+}
+
+.preset-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+  gap: 10px;
+}
+
+.preset-input {
+  width: 100%;
+  padding: 12px 14px;
+  border-radius: 16px;
+  border: 1px solid rgba(255, 255, 255, 0.16);
+  background: rgba(255, 255, 255, 0.08);
+  color: var(--text);
+  font-size: 0.92rem;
+  font-weight: 600;
+  text-align: center;
+  outline: none;
+  cursor: pointer;
+}
+
+.preset-input.active {
+  border-color: rgba(78, 242, 198, 0.55);
+  box-shadow: 0 0 0 1px rgba(78, 242, 198, 0.2);
+}
+
+.preset-input.editing {
+  background: rgba(255, 255, 255, 0.15);
+  cursor: text;
+}
+
+.save-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-top: 10px;
+  flex-wrap: wrap;
+}
+
+.save-targets {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.startup-menu {
+  position: absolute;
+  inset: 0;
+  z-index: 5;
+  background: rgba(0, 0, 0, 0.12);
+  backdrop-filter: blur(2px);
+  display: flex;
+  align-items: stretch;
+  justify-content: center;
+}
+
+.startup-menu-inner {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  grid-template-rows: 1fr;
+  gap: 0;
+  width: 100%;
+  height: 100%;
+}
+
+.startup-button {
+  border-radius: 0;
+  border: none;
+  color: #041014;
+  font-size: 1.3rem;
+  font-weight: 700;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  width: 100%;
+  height: 100%;
+  border-right: 1px solid rgba(0, 0, 0, 0.25);
+}
+
+.startup-button:last-child {
+  border-right: none;
+}
+
+.startup-title {
+  text-shadow: 0 4px 16px rgba(0, 0, 0, 0.35);
+}
+
+.vr-menu-dual {
+  position: absolute;
+  inset: 0;
+  z-index: 6;
+  display: flex;
+}
+
+.vr-menu-eye {
+  position: relative;
+  width: 50%;
+  height: 100%;
+  background: rgba(0, 0, 0, 0.12);
+  backdrop-filter: blur(2px);
+  display: flex;
+}
+
+.vr-menu-grid {
+  width: 100%;
+  height: 100%;
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  grid-template-rows: repeat(2, 1fr);
+  gap: 0;
+}
+
+.vr-menu-button {
+  border-radius: 0;
+  border: 1px solid rgba(0, 0, 0, 0.25);
+  color: #041014;
+  font-size: 1.3rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  background: rgba(255, 255, 255, 0.55);
+}
+
+.vr-menu-button.settings {
+  background: rgba(0, 0, 0, 0.45);
+  color: #fff;
+}
+
+.vr-menu-button.active {
+  box-shadow: inset 0 0 0 4px rgba(78, 242, 198, 0.7);
+}
+
+.vr-cursor {
+  position: absolute;
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  border: 2px solid rgba(255, 70, 70, 0.95);
+  background: rgba(255, 70, 70, 0.25);
+  transform: translate(-50%, -50%);
+  pointer-events: none;
+}
+
 .hud {
   position: absolute;
   top: 14px;
@@ -337,11 +496,10 @@ button.toggle-active {
 
 @media screen and (max-width: 997px) {
   .panel {
-
-    left: 15vw;
-      padding-right: 5rem;
-
-    width: 70vw;
+    left: 12px;
+    right: 12px;
+    width: auto;
+    padding-right: 18px;
   }
 }
 

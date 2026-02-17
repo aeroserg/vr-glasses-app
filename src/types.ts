@@ -10,6 +10,7 @@ export type VRSettings = {
   gamma: number;
   highlights: number;
   shadows: number;
+  temperature: number;
   distortionEnabled: boolean;
   k1: number;
   k2: number;
@@ -18,6 +19,7 @@ export type VRSettings = {
   filterMode: "none" | "amber" | "deepblue" | "edge";
   magnifierEnabled: boolean;
   magnifierZoom: number;
+  magnifierSize: number;
   calibration: boolean;
 };
 
@@ -33,6 +35,7 @@ export const defaultSettings: VRSettings = {
   gamma: 1.0,
   highlights: 0.0,
   shadows: 0.0,
+  temperature: 0.0,
   distortionEnabled: true,
   k1: 35,
   k2: 20,
@@ -41,5 +44,6 @@ export const defaultSettings: VRSettings = {
   filterMode: "none",
   magnifierEnabled: false,
   magnifierZoom: 1.6,
+  magnifierSize: 0.44,
   calibration: false
 };

@@ -21,6 +21,7 @@ uniform float uBrightness;
 uniform float uGamma;
 uniform float uHighlights;
 uniform float uShadows;
+uniform float uTemperature;
 uniform float uScale;
 uniform vec2 uOffset;
 uniform float uSeparation;
@@ -28,6 +29,7 @@ uniform float uEyeSign;
 uniform float uVideoAspect;
 uniform float uMagnifyEnabled;
 uniform float uMagnifyZoom;
+uniform float uMagnifySize;
 uniform float uSphereStrength;
 uniform float uSphereRadius;
 uniform float uK1;
@@ -48,6 +50,7 @@ vec3 applyColor(vec3 color) {
   float highlightMask = smoothstep(0.55, 0.9, lum);
   color += shadowMask * uShadows * 0.35;
   color += highlightMask * uHighlights * 0.35;
+  color += vec3(0.12, 0.04, -0.12) * uTemperature;
   return clamp(color, 0.0, 1.0);
 }
 
@@ -145,8 +148,9 @@ void main() {
     vec2 zoomUV = center + (warped - center) / zoom;
 
     vec2 p = vUV - 0.5;
-    vec2 box = vec2(0.22);
-    float radius = 0.06;
+    float size = clamp(uMagnifySize, 0.2, 1.0);
+    vec2 box = vec2(0.5 * size);
+    float radius = mix(0.08, 0.02, size);
     vec2 q = abs(p) - box + radius;
     float dist = length(max(q, 0.0)) + min(max(q.x, q.y), 0.0) - radius;
     float edge = 0.012;
@@ -212,6 +216,7 @@ uniform float uBrightness;
 uniform float uGamma;
 uniform float uHighlights;
 uniform float uShadows;
+uniform float uTemperature;
 uniform float uScale;
 uniform vec2 uOffset;
 uniform float uSeparation;
@@ -219,6 +224,7 @@ uniform float uEyeSign;
 uniform float uVideoAspect;
 uniform float uMagnifyEnabled;
 uniform float uMagnifyZoom;
+uniform float uMagnifySize;
 uniform float uSphereStrength;
 uniform float uSphereRadius;
 uniform float uK1;
@@ -241,6 +247,7 @@ vec3 applyColor(vec3 color) {
   float highlightMask = smoothstep(0.55, 0.9, lum);
   color += shadowMask * uShadows * 0.35;
   color += highlightMask * uHighlights * 0.35;
+  color += vec3(0.12, 0.04, -0.12) * uTemperature;
   return clamp(color, 0.0, 1.0);
 }
 
@@ -338,8 +345,9 @@ void main() {
     vec2 zoomUV = center + (warped - center) / zoom;
 
     vec2 p = vUV - 0.5;
-    vec2 box = vec2(0.22);
-    float radius = 0.06;
+    float size = clamp(uMagnifySize, 0.2, 1.0);
+    vec2 box = vec2(0.5 * size);
+    float radius = mix(0.08, 0.02, size);
     vec2 q = abs(p) - box + radius;
     float dist = length(max(q, 0.0)) + min(max(q.x, q.y), 0.0) - radius;
     float edge = 0.012;

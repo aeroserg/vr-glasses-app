@@ -15,6 +15,7 @@ type UniformLocations = {
   gamma: WebGLUniformLocation | null;
   highlights: WebGLUniformLocation | null;
   shadows: WebGLUniformLocation | null;
+  temperature: WebGLUniformLocation | null;
   scale: WebGLUniformLocation | null;
   offset: WebGLUniformLocation | null;
   separation: WebGLUniformLocation | null;
@@ -22,6 +23,7 @@ type UniformLocations = {
   videoAspect: WebGLUniformLocation | null;
   magnifyEnabled: WebGLUniformLocation | null;
   magnifyZoom: WebGLUniformLocation | null;
+  magnifySize: WebGLUniformLocation | null;
   sphereStrength: WebGLUniformLocation | null;
   sphereRadius: WebGLUniformLocation | null;
   filterMode: WebGLUniformLocation | null;
@@ -97,6 +99,7 @@ export class GLRenderer {
       gamma: this.gl.getUniformLocation(this.program, "uGamma"),
       highlights: this.gl.getUniformLocation(this.program, "uHighlights"),
       shadows: this.gl.getUniformLocation(this.program, "uShadows"),
+      temperature: this.gl.getUniformLocation(this.program, "uTemperature"),
       scale: this.gl.getUniformLocation(this.program, "uScale"),
       offset: this.gl.getUniformLocation(this.program, "uOffset"),
       separation: this.gl.getUniformLocation(this.program, "uSeparation"),
@@ -104,6 +107,7 @@ export class GLRenderer {
       videoAspect: this.gl.getUniformLocation(this.program, "uVideoAspect"),
       magnifyEnabled: this.gl.getUniformLocation(this.program, "uMagnifyEnabled"),
       magnifyZoom: this.gl.getUniformLocation(this.program, "uMagnifyZoom"),
+      magnifySize: this.gl.getUniformLocation(this.program, "uMagnifySize"),
       sphereStrength: this.gl.getUniformLocation(this.program, "uSphereStrength"),
       sphereRadius: this.gl.getUniformLocation(this.program, "uSphereRadius"),
       filterMode: this.gl.getUniformLocation(this.program, "uFilterMode"),
@@ -310,6 +314,7 @@ export class GLRenderer {
     this.setUniform1f(this.uniforms.gamma, settings.gamma);
     this.setUniform1f(this.uniforms.highlights, settings.highlights);
     this.setUniform1f(this.uniforms.shadows, settings.shadows);
+    this.setUniform1f(this.uniforms.temperature, settings.temperature);
     this.setUniform1f(this.uniforms.scale, settings.scale);
     this.setUniform2f(this.uniforms.offset, offsetX, offsetY);
     this.setUniform1f(this.uniforms.separation, settings.separation);
@@ -320,6 +325,7 @@ export class GLRenderer {
       settings.magnifierEnabled ? 1 : 0
     );
     this.setUniform1f(this.uniforms.magnifyZoom, settings.magnifierZoom);
+    this.setUniform1f(this.uniforms.magnifySize, settings.magnifierSize);
     this.setUniform1f(this.uniforms.sphereStrength, settings.sphereStrength / 100);
     const sphereRadius = 0.5 * (settings.sphereDiameter / 100);
     this.setUniform1f(this.uniforms.sphereRadius, sphereRadius);
