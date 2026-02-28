@@ -105,39 +105,6 @@ body {
     linear-gradient(180deg, #0b0f1a 0%, #0a0c12 100%);
 }
 
-.mode-vr .topbar {
-  display: none;
-}
-
-.topbar {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  padding: 12px 16px;
-  border-bottom: 1px solid rgba(255, 255, 255, 0.06);
-  backdrop-filter: blur(6px);
-  background: rgba(7, 9, 14, 0.6);
-}
-
-.brand {
-  font-weight: 700;
-  letter-spacing: 0.02em;
-}
-
-.status {
-  font-size: 0.85rem;
-  color: var(--muted);
-  margin-left: auto;
-}
-
-.chip {
-  padding: 4px 10px;
-  border-radius: 999px;
-  background: rgba(255, 255, 255, 0.08);
-  font-size: 0.75rem;
-  text-transform: uppercase;
-  letter-spacing: 0.12em;
-}
 
 .stage {
   position: relative;
@@ -500,16 +467,5 @@ button.settings-button.toggle-active {
     right: 12px;
     width: auto;
     padding-right: 18px;
-  }
-}
-
-@media (max-width: 350px) {
-  .topbar {
-    flex-wrap: wrap;
-  }
-
-  .status {
-    width: 100%;
-    margin-left: 0;
   }
 }

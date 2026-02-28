@@ -7,8 +7,6 @@ const SETTINGS_KEY = "phone-vr-camera-settings";
 const PRESETS_KEY = "phone-vr-camera-presets";
 const ACTIVE_PRESET_KEY = "phone-vr-camera-active-preset";
 
-type UiMode = "settings" | "vr";
-
 type SliderProps = {
   label: string;
   min: number;
@@ -301,7 +299,6 @@ export default function App() {
   const [activePresetId, setActivePresetId] = useState<string>(() =>
     loadActivePresetId(initialPresetsRef.current)
   );
-  const [uiMode, setUiMode] = useState<UiMode>("settings");
   const [settingsVisible, setSettingsVisible] = useState(false);
   const [startupMenuVisible, setStartupMenuVisible] = useState(true);
   const [vrMenuVisible, setVrMenuVisible] = useState(false);
@@ -334,6 +331,7 @@ export default function App() {
   const menuTimeoutRef = useRef<number | null>(null);
   const touchStartYRef = useRef<number | null>(null);
   const touchStartXRef = useRef<number | null>(null);
+  const touchMovedRef = useRef(false);
   const [cursorPos, setCursorPos] = useState({ x: 0.5, y: 0.5 });
 
   const supportsCamera = useMemo(() => {
@@ -512,7 +510,7 @@ export default function App() {
     effectiveScaleRef.current = safeDesired / optical;
   }, []);
 
-  const handleGestureReveal = useCallback(() => {
+  const handleMenuReveal = useCallback(() => {
     if (startupMenuVisible || settingsVisible || !isRunning) {
       return;
     }
@@ -520,22 +518,35 @@ export default function App() {
     showVrMenu();
   }, [closeSettings, isRunning, settingsVisible, showVrMenu, startupMenuVisible]);
 
+  const shouldIgnoreStageInteraction = useCallback((target: EventTarget | null) => {
+    if (!(target instanceof Element)) {
+      return true;
+    }
+    return Boolean(
+      target.closest("button") ||
+        target.closest(".panel") ||
+        target.closest(".hud") ||
+        target.closest(".startup-menu") ||
+        target.closest(".vr-menu-dual")
+    );
+  }, []);
+
   const handleWheel = useCallback(
     (event: React.WheelEvent<HTMLDivElement>) => {
       if (settingsVisible || startupMenuVisible || !isRunning) {
         return;
       }
-      updateCursor(event.deltaX, event.deltaY);
       if (vrMenuVisible) {
+        updateCursor(event.deltaX, event.deltaY);
         resetMenuTimer();
         return;
       }
       if (Math.abs(event.deltaY) > 18 || Math.abs(event.deltaX) > 18) {
-        handleGestureReveal();
+        handleMenuReveal();
       }
     },
     [
-      handleGestureReveal,
+      handleMenuReveal,
       isRunning,
       resetMenuTimer,
       settingsVisible,
@@ -547,12 +558,18 @@ export default function App() {
 
   const handleTouchStart = useCallback(
     (event: React.TouchEvent<HTMLDivElement>) => {
+      if (shouldIgnoreStageInteraction(event.target)) {
+        touchStartYRef.current = null;
+        touchStartXRef.current = null;
+        return;
+      }
       if (event.touches.length === 1) {
+        touchMovedRef.current = false;
         touchStartYRef.current = event.touches[0].clientY;
         touchStartXRef.current = event.touches[0].clientX;
       }
     },
-    []
+    [shouldIgnoreStageInteraction]
   );
 
   const handleTouchMove = useCallback(
@@ -580,14 +597,15 @@ export default function App() {
       }
 
       if (Math.abs(dx) > 30 || Math.abs(dy) > 30) {
-        handleGestureReveal();
+        touchMovedRef.current = true;
+        handleMenuReveal();
         updateCursor(dx, dy);
         touchStartXRef.current = current.clientX;
         touchStartYRef.current = current.clientY;
       }
     },
     [
-      handleGestureReveal,
+      handleMenuReveal,
       resetMenuTimer,
       settingsVisible,
       startupMenuVisible,
@@ -596,10 +614,51 @@ export default function App() {
     ]
   );
 
-  const handleTouchEnd = useCallback(() => {
-    touchStartYRef.current = null;
-    touchStartXRef.current = null;
-  }, []);
+  const handleTouchEnd = useCallback(
+    (event: React.TouchEvent<HTMLDivElement>) => {
+      if (
+        !touchMovedRef.current &&
+        !vrMenuVisible &&
+        !settingsVisible &&
+        !startupMenuVisible &&
+        isRunning &&
+        !shouldIgnoreStageInteraction(event.target)
+      ) {
+        handleMenuReveal();
+      }
+      touchMovedRef.current = false;
+      touchStartYRef.current = null;
+      touchStartXRef.current = null;
+    },
+    [
+      handleMenuReveal,
+      isRunning,
+      shouldIgnoreStageInteraction,
+      settingsVisible,
+      startupMenuVisible,
+      vrMenuVisible
+    ]
+  );
+
+  const handleStageClick = useCallback(
+    (event: React.MouseEvent<HTMLDivElement>) => {
+      if (settingsVisible || startupMenuVisible || !isRunning || vrMenuVisible) {
+        return;
+      }
+      if (shouldIgnoreStageInteraction(event.target)) {
+        return;
+      }
+      handleMenuReveal();
+    },
+    [
+      handleMenuReveal,
+      isRunning,
+      shouldIgnoreStageInteraction,
+      settingsVisible,
+      startupMenuVisible,
+      vrMenuVisible
+    ]
+  );
 
   const handleStagePointerDown = useCallback(
     (event: React.PointerEvent<HTMLDivElement>) => {
@@ -782,12 +841,6 @@ export default function App() {
   }, [settingsVisible]);
 
   useEffect(() => {
-    if (uiMode !== "vr") {
-      hideVrMenu();
-    }
-  }, [hideVrMenu, uiMode]);
-
-  useEffect(() => {
     if (!isLandscape) {
       return;
     }
@@ -797,6 +850,41 @@ export default function App() {
     autoStartRef.current = true;
     void handleStart();
   }, [handleStart, isLandscape]);
+
+  useEffect(() => {
+    if (typeof window === "undefined") {
+      return;
+    }
+
+    const handleKeyDown = (event: KeyboardEvent) => {
+      const { key, code } = event;
+      const keyCode = event.keyCode;
+      const isVolumeKey =
+        key === "AudioVolumeUp" ||
+        key === "AudioVolumeDown" ||
+        key === "VolumeUp" ||
+        key === "VolumeDown" ||
+        code === "AudioVolumeUp" ||
+        code === "AudioVolumeDown" ||
+        code === "VolumeUp" ||
+        code === "VolumeDown" ||
+        keyCode === 175 ||
+        keyCode === 174 ||
+        keyCode === 24 ||
+        keyCode === 25;
+
+      if (!isVolumeKey) {
+        return;
+      }
+      event.preventDefault();
+      handleMenuReveal();
+    };
+
+    window.addEventListener("keydown", handleKeyDown, { passive: false });
+    return () => {
+      window.removeEventListener("keydown", handleKeyDown);
+    };
+  }, [handleMenuReveal]);
 
   if (!isLandscape) {
     return (
@@ -832,37 +920,14 @@ export default function App() {
   }
 
   return (
-    <div className={`app ${uiMode === "vr" ? "mode-vr" : "mode-settings"}`}>
-      <header className="topbar">
-        <div className="brand">Phone VR Camera</div>
-        <span className="chip">WebGL</span>
-        <div className="status">
-          {isRunning ? "Запущено" : "Остановлено"}
-        </div>
-        <button
-          className="ghost"
-          onClick={() =>
-            setUiMode((mode) => {
-              const next = mode === "settings" ? "vr" : "settings";
-              if (next === "settings") {
-                openSettings();
-              } else {
-                closeSettings();
-              }
-              return next;
-            })
-          }
-        >
-          {uiMode === "settings" ? "VR режим" : "Обычный режим"}
-        </button>
-      </header>
-
+    <div className="app">
       <div
         className="stage"
         onWheel={handleWheel}
         onTouchStart={handleTouchStart}
         onTouchMove={handleTouchMove}
         onTouchEnd={handleTouchEnd}
+        onClick={handleStageClick}
         onPointerDownCapture={handleStagePointerDown}
       >
         <div className="canvas-wrap">
