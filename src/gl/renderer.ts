@@ -40,9 +40,15 @@ type AttributeLocations = {
   uv: number;
 };
 
+export type RenderSource = {
+  element: TexImageSource;
+  width: number;
+  height: number;
+  ready: boolean;
+};
+
 export class GLRenderer {
   private readonly canvas: HTMLCanvasElement;
-  private readonly video: HTMLVideoElement;
   private readonly gl: GLContext;
   private readonly program: WebGLProgram;
   private readonly texture: WebGLTexture;
@@ -52,14 +58,15 @@ export class GLRenderer {
   private readonly isWebGL2: boolean;
   private rafId = 0;
   private readonly getSettings: () => VRSettings;
+  private readonly getSource: () => RenderSource | null;
 
   constructor(
     canvas: HTMLCanvasElement,
-    video: HTMLVideoElement,
+    getSource: () => RenderSource | null,
     getSettings: () => VRSettings
   ) {
     this.canvas = canvas;
-    this.video = video;
+    this.getSource = getSource;
     this.getSettings = getSettings;
 
     const gl2 = canvas.getContext("webgl2", {
@@ -268,8 +275,8 @@ export class GLRenderer {
     }
   }
 
-  private updateVideoTexture() {
-    if (this.video.readyState < this.video.HAVE_CURRENT_DATA) {
+  private updateTexture(source: RenderSource) {
+    if (!source.ready) {
       return;
     }
 
@@ -280,7 +287,7 @@ export class GLRenderer {
       this.gl.RGBA,
       this.gl.RGBA,
       this.gl.UNSIGNED_BYTE,
-      this.video
+      source.element
     );
   }
 
@@ -304,7 +311,7 @@ export class GLRenderer {
     viewportHeight: number,
     offsetX: number,
     offsetY: number,
-    videoAspect: number,
+    sourceAspect: number,
     settings: VRSettings
   ) {
     this.gl.viewport(viewportX, viewportY, viewportWidth, viewportHeight);
@@ -319,7 +326,7 @@ export class GLRenderer {
     this.setUniform2f(this.uniforms.offset, offsetX, offsetY);
     this.setUniform1f(this.uniforms.separation, settings.separation);
     this.setUniform1f(this.uniforms.eyeSign, eyeSign);
-    this.setUniform1f(this.uniforms.videoAspect, videoAspect);
+    this.setUniform1f(this.uniforms.videoAspect, sourceAspect);
     this.setUniform1f(
       this.uniforms.magnifyEnabled,
       settings.magnifierEnabled ? 1 : 0
@@ -378,7 +385,14 @@ export class GLRenderer {
     }
 
     this.gl.clear(this.gl.COLOR_BUFFER_BIT);
-    this.updateVideoTexture();
+
+    const source = this.getSource();
+    if (!source) {
+      this.rafId = requestAnimationFrame(this.render);
+      return;
+    }
+
+    this.updateTexture(source);
 
     const width = this.canvas.width;
     const height = this.canvas.height;
@@ -388,10 +402,10 @@ export class GLRenderer {
     const offsetY = Math.max(0, Math.floor((height - squareSize) / 2));
 
     const settings = this.getSettings();
-    const videoWidth = this.video.videoWidth || 1;
-    const videoHeight = this.video.videoHeight || 1;
-    const videoAspect = videoWidth / videoHeight;
-    this.setUniform2f(this.uniforms.texel, 1 / videoWidth, 1 / videoHeight);
+    const sourceWidth = Math.max(1, source.width);
+    const sourceHeight = Math.max(1, source.height);
+    const sourceAspect = sourceWidth / sourceHeight;
+    this.setUniform2f(this.uniforms.texel, 1 / sourceWidth, 1 / sourceHeight);
 
     this.drawEye(
       -1,
@@ -401,7 +415,7 @@ export class GLRenderer {
       squareSize,
       settings.leftOffsetX,
       settings.leftOffsetY,
-      videoAspect,
+      sourceAspect,
       settings
     );
     this.drawEye(
@@ -412,7 +426,7 @@ export class GLRenderer {
       squareSize,
       settings.rightOffsetX,
       settings.rightOffsetY,
-      videoAspect,
+      sourceAspect,
       settings
     );
 
