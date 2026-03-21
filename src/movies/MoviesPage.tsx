@@ -207,8 +207,8 @@ export default function MoviesPage({
   return (
     <div className="app">
       {hasFile ? (
-        <div className="stage">
-          <div className="canvas-wrap">
+        <div className="stage movie-stage">
+          <div className="canvas-wrap movie-canvas-wrap">
             <VRCanvas getSource={getSource} settings={settings} />
           </div>
 
@@ -264,9 +264,9 @@ export default function MoviesPage({
             <button className="ghost" onClick={() => void handleExitFile()}>Выйти</button>
           </div>
 
-          <div className="overlay-message" style={{ inset: "auto 16px 16px 16px" }}>
+          <div className="overlay-message movie-overlay">
             <strong>{fileName}</strong>
-            <div className="notice">Видео сохраняется и откроется снова при следующем запуске.</div>
+            <div className="notice">Один и тот же видеопоток дублируется в оба глаза и сохраняется между запусками.</div>
           </div>
 
           <SettingsPanel

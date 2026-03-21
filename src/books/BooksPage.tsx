@@ -1,12 +1,27 @@
-import { useCallback, useEffect, useMemo, useRef, useState, type ChangeEvent } from "react";
+import {
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+  type ChangeEvent,
+  type TouchEvent,
+  type WheelEvent
+} from "react";
 import SettingsPanel from "../components/SettingsPanel";
 import VRCanvas from "../components/VRCanvas";
-import { drawBookPageToCanvas, parseBookFile, type BookContent } from "./bookUtils";
+import {
+  createReaderLayout,
+  drawReaderToCanvas,
+  parseBookFile,
+  readerCanvasSize,
+  type BookContent
+} from "./bookUtils";
 import { clearFileFromStore, loadFileFromStore, saveFileToStore } from "../storage/fileStore";
 import type { VRSettings } from "../types";
 
 const BOOK_SLOT = "book";
-const BOOK_PAGE_KEY = "book-viewer-page";
+const BOOK_SCROLL_PREFIX = "book-viewer-scroll:";
 
 type BooksPageProps = {
   settings: VRSettings;
@@ -15,25 +30,37 @@ type BooksPageProps = {
   onBack: () => void;
 };
 
-const loadLastPage = () => {
+const scrollStorageKey = (fileKey: string) => `${BOOK_SCROLL_PREFIX}${encodeURIComponent(fileKey)}`;
+
+const loadSavedScroll = (fileKey: string) => {
   if (typeof window === "undefined") {
-    return 1;
+    return 0;
   }
-  const raw = window.localStorage.getItem(BOOK_PAGE_KEY);
-  const page = Number(raw);
-  return Number.isFinite(page) && page > 0 ? Math.floor(page) : 1;
+
+  const raw = window.localStorage.getItem(scrollStorageKey(fileKey));
+  const value = Number(raw);
+  return Number.isFinite(value) && value >= 0 ? value : 0;
 };
 
-const toCssFilter = (settings: VRSettings) => {
-  const brightness = Math.max(0.2, 1 + settings.brightness);
-  const contrast = Math.max(0.2, settings.contrast);
-  const grayscale = settings.filterMode === "none" ? 0 : settings.filterMode === "edge" ? 1 : 0;
+const saveScroll = (fileKey: string, scrollTop: number) => {
+  if (typeof window === "undefined") {
+    return;
+  }
+  window.localStorage.setItem(scrollStorageKey(fileKey), String(Math.max(0, Math.round(scrollTop))));
+};
 
-  return [
-    `brightness(${brightness})`,
-    `contrast(${contrast})`,
-    `grayscale(${grayscale})`
-  ].join(" ");
+const shouldIgnoreStageScroll = (target: EventTarget | null) => {
+  if (!(target instanceof Element)) {
+    return false;
+  }
+
+  return Boolean(
+    target.closest(".hud") ||
+      target.closest(".panel") ||
+      target.closest("button") ||
+      target.closest("input") ||
+      target.closest("label")
+  );
 };
 
 export default function BooksPage({
@@ -44,58 +71,50 @@ export default function BooksPage({
 }: BooksPageProps) {
   const [settingsVisible, setSettingsVisible] = useState(false);
   const [bookContent, setBookContent] = useState<BookContent | null>(null);
-  const [fileName, setFileName] = useState<string>("");
-  const [page, setPage] = useState<number>(() => loadLastPage());
+  const [scrollTop, setScrollTop] = useState(0);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
-  const objectUrlRef = useRef<string | null>(null);
   const sourceCanvasRef = useRef<HTMLCanvasElement | null>(null);
+  const touchYRef = useRef<number | null>(null);
 
   if (!sourceCanvasRef.current && typeof document !== "undefined") {
     sourceCanvasRef.current = document.createElement("canvas");
   }
 
-  const openBookFile = useCallback(async (file: File, persist: boolean, resetPage = true) => {
-    setError(null);
+  const openBookFile = useCallback(
+    async (file: File, options: { persist: boolean; restorePosition: boolean }) => {
+      const parsed = await parseBookFile(file);
 
-    const parsed = await parseBookFile(file);
+      if (options.persist) {
+        await saveFileToStore(BOOK_SLOT, file, file.name, file.type);
+      }
 
-    if (objectUrlRef.current) {
-      URL.revokeObjectURL(objectUrlRef.current);
-      objectUrlRef.current = null;
-    }
-
-    if (parsed.kind === "pdf") {
-      objectUrlRef.current = parsed.objectUrl;
-    }
-
-    if (persist) {
-      await saveFileToStore(BOOK_SLOT, file, file.name, file.type);
-    }
-
-    setFileName(file.name);
-    setBookContent(parsed);
-    if (resetPage) {
-      setPage(1);
-    }
-  }, []);
+      setBookContent(parsed);
+      setScrollTop(options.restorePosition ? loadSavedScroll(parsed.fileKey) : 0);
+      setError(null);
+    },
+    []
+  );
 
   useEffect(() => {
     let disposed = false;
 
     const loadStored = async () => {
       setLoading(true);
+
       try {
         const saved = await loadFileFromStore(BOOK_SLOT);
         if (!saved || disposed) {
           return;
         }
+
         const restoredFile = new File([saved.blob], saved.name, {
           type: saved.type || saved.blob.type,
           lastModified: saved.updatedAt
         });
-        await openBookFile(restoredFile, false, false);
+
+        await openBookFile(restoredFile, { persist: false, restorePosition: true });
       } catch (err) {
         if (!disposed) {
           setError(err instanceof Error ? err.message : "Не удалось восстановить книгу");
@@ -111,56 +130,73 @@ export default function BooksPage({
 
     return () => {
       disposed = true;
-      if (objectUrlRef.current) {
-        URL.revokeObjectURL(objectUrlRef.current);
-        objectUrlRef.current = null;
-      }
     };
   }, [openBookFile]);
 
-  useEffect(() => {
-    if (typeof window === "undefined") {
-      return;
-    }
-    window.localStorage.setItem(BOOK_PAGE_KEY, String(page));
-  }, [page]);
+  const layout = useMemo(
+    () =>
+      bookContent
+        ? createReaderLayout(bookContent, {
+            readerFontFamily: settings.readerFontFamily,
+            readerFontSize: settings.readerFontSize
+          })
+        : null,
+    [bookContent, settings.readerFontFamily, settings.readerFontSize]
+  );
 
   useEffect(() => {
-    if (!bookContent || bookContent.kind !== "text" || !sourceCanvasRef.current) {
+    if (!bookContent) {
       return;
     }
 
-    const pageCount = Math.max(1, bookContent.pages.length);
-    const clampedPage = Math.min(pageCount, Math.max(1, page));
-    if (clampedPage !== page) {
-      setPage(clampedPage);
+    saveScroll(bookContent.fileKey, scrollTop);
+  }, [bookContent, scrollTop]);
+
+  useEffect(() => {
+    if (!layout) {
+      return;
+    }
+    setScrollTop((current) => Math.min(layout.maxScrollTop, Math.max(0, current)));
+  }, [layout]);
+
+  useEffect(() => {
+    if (!layout || !sourceCanvasRef.current) {
       return;
     }
 
-    const pageText = bookContent.pages[clampedPage - 1] ?? "";
-    drawBookPageToCanvas(sourceCanvasRef.current, pageText, fileName, clampedPage, pageCount);
-  }, [bookContent, fileName, page]);
+    drawReaderToCanvas(sourceCanvasRef.current, layout, scrollTop);
+  }, [layout, scrollTop]);
 
   const getSource = useCallback(() => {
     const canvas = sourceCanvasRef.current;
-    if (!canvas || !bookContent || bookContent.kind !== "text") {
+    if (!canvas || !bookContent) {
       return null;
     }
 
     return {
       element: canvas,
-      width: canvas.width || 1,
-      height: canvas.height || 1,
+      width: canvas.width || readerCanvasSize,
+      height: canvas.height || readerCanvasSize,
       ready: true
     };
   }, [bookContent]);
 
-  const pageCount = useMemo(() => {
-    if (!bookContent || bookContent.kind !== "text") {
-      return null;
-    }
-    return Math.max(1, bookContent.pages.length);
-  }, [bookContent]);
+  const clampScroll = useCallback(
+    (next: number) => {
+      if (!layout) {
+        return 0;
+      }
+      return Math.min(layout.maxScrollTop, Math.max(0, next));
+    },
+    [layout]
+  );
+
+  const scrollBy = useCallback(
+    (delta: number) => {
+      setScrollTop((current) => clampScroll(current + delta));
+    },
+    [clampScroll]
+  );
 
   const handleUpload = useCallback(
     async (event: ChangeEvent<HTMLInputElement>) => {
@@ -171,7 +207,7 @@ export default function BooksPage({
 
       try {
         setLoading(true);
-        await openBookFile(file, true);
+        await openBookFile(file, { persist: true, restorePosition: false });
       } catch (err) {
         setError(err instanceof Error ? err.message : "Не удалось открыть файл");
       } finally {
@@ -182,27 +218,131 @@ export default function BooksPage({
     [openBookFile]
   );
 
-  const handleCloseFile = useCallback(async () => {
-    if (objectUrlRef.current) {
-      URL.revokeObjectURL(objectUrlRef.current);
-      objectUrlRef.current = null;
+  const handleClearFile = useCallback(async () => {
+    setLoading(true);
+    try {
+      await clearFileFromStore(BOOK_SLOT);
+      setBookContent(null);
+      setScrollTop(0);
+      setSettingsVisible(false);
+      setError(null);
+    } finally {
+      setLoading(false);
     }
-    setBookContent(null);
-    setFileName("");
-    setPage(1);
-    setError(null);
-    await clearFileFromStore(BOOK_SLOT);
   }, []);
 
-  const cssFilter = useMemo(() => toCssFilter(settings), [settings]);
+  const handleWheel = useCallback(
+    (event: WheelEvent<HTMLDivElement>) => {
+      if (!bookContent || settingsVisible || shouldIgnoreStageScroll(event.target)) {
+        return;
+      }
+
+      event.preventDefault();
+      scrollBy(event.deltaY);
+    },
+    [bookContent, scrollBy, settingsVisible]
+  );
+
+  const handleTouchStart = useCallback(
+    (event: TouchEvent<HTMLDivElement>) => {
+      if (settingsVisible || shouldIgnoreStageScroll(event.target)) {
+        touchYRef.current = null;
+        return;
+      }
+
+      if (event.touches.length === 1) {
+        touchYRef.current = event.touches[0].clientY;
+      }
+    },
+    [settingsVisible]
+  );
+
+  const handleTouchMove = useCallback(
+    (event: TouchEvent<HTMLDivElement>) => {
+      if (settingsVisible || shouldIgnoreStageScroll(event.target)) {
+        return;
+      }
+
+      if (touchYRef.current === null || event.touches.length !== 1) {
+        return;
+      }
+
+      const currentY = event.touches[0].clientY;
+      const delta = touchYRef.current - currentY;
+      if (Math.abs(delta) < 1) {
+        return;
+      }
+
+      event.preventDefault();
+      scrollBy(delta * 1.1);
+      touchYRef.current = currentY;
+    },
+    [scrollBy, settingsVisible]
+  );
+
+  const handleTouchEnd = useCallback(() => {
+    touchYRef.current = null;
+  }, []);
+
+  useEffect(() => {
+    if (typeof window === "undefined" || !bookContent) {
+      return;
+    }
+
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (settingsVisible) {
+        return;
+      }
+
+      if (event.key === "ArrowDown" || event.key === "PageDown" || event.key === " ") {
+        event.preventDefault();
+        scrollBy(140);
+      }
+
+      if (event.key === "ArrowUp" || event.key === "PageUp") {
+        event.preventDefault();
+        scrollBy(-140);
+      }
+
+      if (event.key === "Home") {
+        event.preventDefault();
+        setScrollTop(0);
+      }
+
+      if (event.key === "End" && layout) {
+        event.preventDefault();
+        setScrollTop(layout.maxScrollTop);
+      }
+    };
+
+    window.addEventListener("keydown", handleKeyDown, { passive: false });
+    return () => {
+      window.removeEventListener("keydown", handleKeyDown);
+    };
+  }, [bookContent, layout, scrollBy, settingsVisible]);
+
+  const handleExit = useCallback(() => {
+    setSettingsVisible(false);
+    onBack();
+  }, [onBack]);
+
+  const progress = useMemo(() => {
+    if (!layout) {
+      return 0;
+    }
+    if (layout.maxScrollTop <= 0) {
+      return 100;
+    }
+    return Math.round((clampScroll(scrollTop) / layout.maxScrollTop) * 100);
+  }, [clampScroll, layout, scrollTop]);
 
   if (!bookContent) {
     return (
       <div className="app">
         <div className="media-empty-screen">
           <div className="media-empty-card">
-            <h2>Книги</h2>
-            <p>Загрузите файл в формате PDF, FB2 или HTML.</p>
+            <h2>Читалка</h2>
+            <p>Поддерживаются PDF, FB2, TXT, DOCX и HTML. Все файлы открываются как единая длинная лента текста.</p>
             {error && <div className="notice" style={{ color: "var(--danger)" }}>{error}</div>}
             <div className="button-row media-empty-buttons">
               <button
@@ -217,7 +357,7 @@ export default function BooksPage({
             <input
               ref={fileInputRef}
               type="file"
-              accept=".pdf,.fb2,.html,.htm,application/pdf,text/html,application/xml,text/xml"
+              accept=".pdf,.fb2,.txt,.docx,.html,.htm,application/pdf,text/plain,application/vnd.openxmlformats-officedocument.wordprocessingml.document,text/html,application/xml,text/xml"
               className="hidden-input"
               onChange={handleUpload}
             />
@@ -229,49 +369,33 @@ export default function BooksPage({
 
   return (
     <div className="app">
-      <div className="stage">
-        <div className="hud media-controls">
-          <button className="ghost" onClick={onBack}>Меню</button>
-          <button className="ghost" onClick={() => setPage((current) => Math.max(1, current - 1))}>◀</button>
-          <span className="media-page-label">
-            {page}
-            {pageCount ? ` / ${pageCount}` : ""}
-          </span>
-          <button
-            className="ghost"
-            onClick={() =>
-              setPage((current) =>
-                pageCount ? Math.min(pageCount, current + 1) : current + 1
-              )
-            }
-          >
-            ▶
-          </button>
+      <div
+        className="stage reader-stage"
+        onWheel={handleWheel}
+        onTouchStart={handleTouchStart}
+        onTouchMove={handleTouchMove}
+        onTouchEnd={handleTouchEnd}
+      >
+        <div className="canvas-wrap">
+          <VRCanvas getSource={getSource} settings={settings} className="reader-canvas" />
+        </div>
+
+        <div className="hud reader-hud">
+          <div className="reader-status">{bookContent.fileName}</div>
+          <div className="reader-status">{progress}%</div>
           <button
             className={settingsVisible ? "settings-button toggle-active" : "settings-button"}
             onClick={() => setSettingsVisible((current) => !current)}
           >
             Настройки
           </button>
-          <button className="ghost" onClick={() => void handleCloseFile()}>Выйти</button>
+          <button className="ghost" onClick={handleExit}>Выход в меню</button>
         </div>
 
-        {bookContent.kind === "text" ? (
-          <div className="canvas-wrap">
-            <VRCanvas getSource={getSource} settings={settings} />
-          </div>
-        ) : (
-          <div className="split-fallback" style={{ filter: cssFilter }}>
-            <iframe
-              title="book-left"
-              src={`${bookContent.objectUrl}#page=${page}&view=FitH`}
-              className="split-fallback-frame"
-            />
-            <iframe
-              title="book-right"
-              src={`${bookContent.objectUrl}#page=${page}&view=FitH`}
-              className="split-fallback-frame"
-            />
+        {error && (
+          <div className="overlay-message reader-overlay">
+            <strong>Ошибка файла</strong>
+            <div className="notice" style={{ color: "var(--danger)" }}>{error}</div>
           </div>
         )}
 
@@ -281,6 +405,22 @@ export default function BooksPage({
           updateSettings={updateSettings}
           onClose={() => setSettingsVisible(false)}
           onReset={resetSettings}
+          showReaderTypography
+        >
+          <div className="button-row">
+            <button className="ghost" onClick={() => fileInputRef.current?.click()}>Открыть другой файл</button>
+            <button className="ghost" onClick={() => void handleClearFile()}>Убрать файл</button>
+            <button className="ghost" onClick={handleExit}>Выход в меню</button>
+          </div>
+          <div className="notice">Позиция чтения сохраняется автоматически и восстановится после повторного открытия.</div>
+        </SettingsPanel>
+
+        <input
+          ref={fileInputRef}
+          type="file"
+          accept=".pdf,.fb2,.txt,.docx,.html,.htm,application/pdf,text/plain,application/vnd.openxmlformats-officedocument.wordprocessingml.document,text/html,application/xml,text/xml"
+          className="hidden-input"
+          onChange={handleUpload}
         />
       </div>
     </div>

@@ -21,6 +21,8 @@ export type VRSettings = {
   magnifierZoom: number;
   magnifierSize: number;
   calibration: boolean;
+  readerFontFamily: "sans" | "serif";
+  readerFontSize: number;
 };
 
 export const defaultSettings: VRSettings = {
@@ -45,5 +47,7 @@ export const defaultSettings: VRSettings = {
   magnifierEnabled: false,
   magnifierZoom: 1.6,
   magnifierSize: 0.44,
-  calibration: false
+  calibration: false,
+  readerFontFamily: "sans",
+  readerFontSize: 42
 };

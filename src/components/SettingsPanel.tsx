@@ -1,3 +1,4 @@
+import type { ReactNode } from "react";
 import type { VRSettings } from "../types";
 
 type SliderProps = {
@@ -11,6 +12,8 @@ type SliderProps = {
 };
 
 type SettingsPanelProps = {
+  children?: ReactNode;
+  showReaderTypography?: boolean;
   visible: boolean;
   settings: VRSettings;
   updateSettings: (patch: Partial<VRSettings>) => void;
@@ -25,7 +28,7 @@ const Slider = ({
   step,
   value,
   onChange,
-  formatValue
+  formatValue,
 }: SliderProps) => {
   return (
     <label className="control">
@@ -46,17 +49,23 @@ const Slider = ({
 };
 
 export default function SettingsPanel({
+  children,
+  showReaderTypography = false,
   visible,
   settings,
   updateSettings,
   onClose,
-  onReset
+  onReset,
 }: SettingsPanelProps) {
   return (
     <div className={`panel ${visible ? "" : "hidden"}`}>
       <div className="button-row" style={{ marginBottom: 10 }}>
-        <button className="ghost" onClick={onClose}>Закрыть</button>
-        <button className="ghost" onClick={onReset}>Сброс</button>
+        <button className="ghost" onClick={onClose}>
+          Закрыть
+        </button>
+        <button className="ghost" onClick={onReset}>
+          Сброс
+        </button>
       </div>
 
       <div className="section-title">Фильтры</div>
@@ -68,13 +77,17 @@ export default function SettingsPanel({
           Без фильтра
         </button>
         <button
-          className={settings.filterMode === "amber" ? "toggle-active" : "ghost"}
+          className={
+            settings.filterMode === "amber" ? "toggle-active" : "ghost"
+          }
           onClick={() => updateSettings({ filterMode: "amber" })}
         >
           Желто-черный
         </button>
         <button
-          className={settings.filterMode === "deepblue" ? "toggle-active" : "ghost"}
+          className={
+            settings.filterMode === "deepblue" ? "toggle-active" : "ghost"
+          }
           onClick={() => updateSettings({ filterMode: "deepblue" })}
         >
           Темно-сине-белый
@@ -91,13 +104,17 @@ export default function SettingsPanel({
       <div className="button-row">
         <button
           className={settings.distortionEnabled ? "toggle-active" : "ghost"}
-          onClick={() => updateSettings({ distortionEnabled: !settings.distortionEnabled })}
+          onClick={() =>
+            updateSettings({ distortionEnabled: !settings.distortionEnabled })
+          }
         >
           Дисторсия
         </button>
         <button
           className={settings.magnifierEnabled ? "toggle-active" : "ghost"}
-          onClick={() => updateSettings({ magnifierEnabled: !settings.magnifierEnabled })}
+          onClick={() =>
+            updateSettings({ magnifierEnabled: !settings.magnifierEnabled })
+          }
         >
           Лупа
         </button>
@@ -257,10 +274,55 @@ export default function SettingsPanel({
         />
       </div>
 
+      {showReaderTypography ? (
+        <>
+          <div className="section-title">Текст книги</div>
+          <div className="button-row">
+            <button
+              className={
+                settings.readerFontFamily === "serif"
+                  ? "toggle-active"
+                  : "ghost"
+              }
+              onClick={() => updateSettings({ readerFontFamily: "serif" })}
+            >
+              Засечки
+            </button>
+            <button
+              className={
+                settings.readerFontFamily === "sans" ? "toggle-active" : "ghost"
+              }
+              onClick={() => updateSettings({ readerFontFamily: "sans" })}
+            >
+              Без засечек
+            </button>
+          </div>
+          <div className="controls">
+            <Slider
+              label="Размер шрифта"
+              min={28}
+              max={200}
+              step={1}
+              value={settings.readerFontSize}
+              onChange={(value) => updateSettings({ readerFontSize: value })}
+              formatValue={(value) => `${value.toFixed(0)} px`}
+            />
+          </div>
+        </>
+      ) : null}
+
       <div className="section-title">Советы</div>
       <div className="notice">
-        Эти настройки общие для очков, книг и фильмов. Изменения сохраняются между запусками.
+        Эти настройки общие для очков, книг и фильмов. Изменения сохраняются
+        между запусками.
       </div>
+
+      {children ? (
+        <>
+          <div className="section-title">Файл</div>
+          <div className="controls">{children}</div>
+        </>
+      ) : null}
     </div>
   );
 }

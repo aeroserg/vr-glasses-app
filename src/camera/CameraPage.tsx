@@ -16,6 +16,7 @@ import { defaultSettings, type VRSettings } from "../types";
 const SETTINGS_KEY = "phone-vr-camera-settings";
 const PRESETS_KEY = "phone-vr-camera-presets";
 const ACTIVE_PRESET_KEY = "phone-vr-camera-active-preset";
+const CAMERA_MAX_SCALE = 5;
 
 type SliderProps = {
   label: string;
@@ -173,6 +174,12 @@ const normalizeSettings = (partial: Partial<VRSettings>): VRSettings => {
     merged.k1 = merged.k1 * 100;
     merged.k2 = merged.k2 * 100;
   }
+  merged.scale = Math.min(CAMERA_MAX_SCALE, Math.max(1, merged.scale || 1));
+  merged.readerFontFamily = merged.readerFontFamily === "serif" ? "serif" : "sans";
+  merged.readerFontSize = Math.min(
+    60,
+    Math.max(28, Math.round(merged.readerFontSize || defaultSettings.readerFontSize))
+  );
   return merged;
 };
 
@@ -291,6 +298,7 @@ const isInterruptedPlayError = (error: unknown) => {
   return error.message.toLowerCase().includes("play() request was interrupted");
 };
 
+
 export default function CameraPage({ onBack }: CameraPageProps) {
   const initialPresetsRef = useRef<PresetSlot[]>(loadPresets());
   const [settings, setSettings] = useState<VRSettings>(() => loadSettings());
@@ -380,7 +388,7 @@ export default function CameraPage({ onBack }: CameraPageProps) {
   }, [handleStop]);
 
   const updateSettings = (patch: Partial<VRSettings>) => {
-    setSettings((current) => ({ ...current, ...patch }));
+    setSettings((current) => normalizeSettings({ ...current, ...patch }));
   };
 
   const resetSettingsTimer = useCallback(() => {
@@ -444,7 +452,7 @@ export default function CameraPage({ onBack }: CameraPageProps) {
   }, []);
 
   const applyNativeZoom = useCallback(async (desiredScale: number) => {
-    const safeDesired = Math.max(1, desiredScale);
+    const safeDesired = Math.min(CAMERA_MAX_SCALE, Math.max(1, desiredScale));
     const track = streamRef.current?.getVideoTracks()[0];
 
     if (!track || typeof track.getCapabilities !== "function") {
@@ -467,7 +475,10 @@ export default function CameraPage({ onBack }: CameraPageProps) {
     }
 
     const min = typeof zoomCaps.min === "number" ? zoomCaps.min : 1;
-    const max = typeof zoomCaps.max === "number" ? zoomCaps.max : safeDesired;
+    const max = Math.min(
+      CAMERA_MAX_SCALE,
+      typeof zoomCaps.max === "number" ? zoomCaps.max : safeDesired
+    );
     const step = typeof zoomCaps.step === "number" ? zoomCaps.step : 0.1;
     const clamped = Math.min(max, Math.max(min, safeDesired));
     const snapped = step > 0 ? Math.round(clamped / step) * step : clamped;
@@ -676,8 +687,9 @@ export default function CameraPage({ onBack }: CameraPageProps) {
       const constraints: MediaStreamConstraints = {
         video: {
           facingMode: { ideal: "environment" },
-          width: { ideal: 1280 },
-          height: { ideal: 720 }
+          width: { ideal: 1920 },
+          height: { ideal: 1080 },
+          frameRate: { ideal: 30, max: 60 }
         },
         audio: false
       };
@@ -1161,7 +1173,7 @@ export default function CameraPage({ onBack }: CameraPageProps) {
             <Slider
               label="Масштаб"
               min={1}
-              max={3}
+              max={CAMERA_MAX_SCALE}
               step={0.01}
               value={settings.scale}
               onChange={(value) => updateSettings({ scale: value })}

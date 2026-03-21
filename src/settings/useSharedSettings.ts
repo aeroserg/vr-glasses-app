@@ -10,6 +10,15 @@ const normalizeSettings = (partial: Partial<VRSettings>): VRSettings => {
     merged.k1 = merged.k1 * 100;
     merged.k2 = merged.k2 * 100;
   }
+  merged.readerFontFamily =
+    merged.readerFontFamily === "serif" ? "serif" : "sans";
+  merged.readerFontSize = Math.min(
+    200,
+    Math.max(
+      28,
+      Math.round(merged.readerFontSize || defaultSettings.readerFontSize),
+    ),
+  );
   return merged;
 };
 
@@ -41,7 +50,7 @@ export const useSharedSettings = () => {
   }, [settings]);
 
   const updateSettings = useCallback((patch: Partial<VRSettings>) => {
-    setSettings((current) => ({ ...current, ...patch }));
+    setSettings((current) => normalizeSettings({ ...current, ...patch }));
   }, []);
 
   const resetSettings = useCallback(() => {
@@ -51,6 +60,6 @@ export const useSharedSettings = () => {
   return {
     settings,
     updateSettings,
-    resetSettings
+    resetSettings,
   };
 };
